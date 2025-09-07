@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procesador de PDF a Excel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-form {
+            text-align: center;
+        }
+        .file-input {
+            margin: 20px 0;
+        }
+        .submit-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .submit-button:hover {
+            background-color: #45a049;
+        }
+        .instructions {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Procesador de PDF a Excel</h1>
+        <div class="upload-form">
+            <form action="/upload" method="post" enctype="multipart/form-data" onsubmit="return validateForm()">
+                <div class="file-input">
+                    <input type="file" name="file" id="file" accept=".pdf" required>
+                </div>
+                <button type="submit" class="submit-button">Procesar PDF</button>
+            </form>
+            <div id="error" class="error"></div>
+        </div>
+        <div class="instructions">
+            <h3>Instrucciones:</h3>
+            <ol>
+                <li>Seleccione un archivo PDF que contenga la tabla de productos.</li>
+                <li>Haga clic en "Procesar PDF" para convertir el archivo.</li>
+                <li>Se descargará automáticamente un archivo Excel con los resultados.</li>
+            </ol>
+            <p><strong>Nota:</strong> El archivo PDF debe tener un formato similar al esperado para su correcto procesamiento.</p>
+        </div>
+    </div>
+
+    <script>
+        function validateForm() {
+            const fileInput = document.getElementById('file');
+            const errorDiv = document.getElementById('error');
+            
+            if (!fileInput.files.length) {
+                errorDiv.textContent = 'Por favor seleccione un archivo';
+                errorDiv.style.display = 'block';
+                return false;
+            }
+            
+            const fileName = fileInput.files[0].name.toLowerCase();
+            if (!fileName.endsWith('.pdf')) {
+                errorDiv.textContent = 'Solo se permiten archivos PDF';
+                errorDiv.style.display = 'block';
+                return false;
+            }
+            
+            errorDiv.style.display = 'none';
+            return true;
+        }
+    </script>
+</body>
+</html>
