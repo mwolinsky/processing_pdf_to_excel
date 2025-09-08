@@ -58,6 +58,8 @@ def process_pdf(pdf_path):
             pct_bonificacion = resultados['Bonificación'] / resultados['Subtotal Cotización']
         else:
             pct_bonificacion = 0
+
+        print(pct_bonificacion)
             
         # Convert numeric columns
         df_final["Cantidad"] = pd.to_numeric(df_final["Cantidad"], errors="coerce")
