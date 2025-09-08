@@ -1,4 +1,5 @@
 import os
+import re
 from flask import Flask, request, render_template, send_file
 import pdfplumber
 import pandas as pd
@@ -46,6 +47,18 @@ def process_pdf(pdf_path):
         for page in pdf.pages:
             text += page.extract_text() + "\n"
         
+        # Extract bonificación from text
+        pattern = r'(Subtotal Cotización|Bonificación|Subtotal Neto|IVA|Total Cotización)\s*:\s*([\\d.,]+)'
+        matches = re.findall(pattern, text)
+        resultados = {label: float(valor.replace(',', '').replace('.', '', valor.count('.')-1)) 
+                     for label, valor in matches}
+        
+        # Calculate bonificación percentage
+        if 'Subtotal Cotización' in resultados and 'Bonificación' in resultados:
+            pct_bonificacion = resultados['Bonificación'] / resultados['Subtotal Cotización']
+        else:
+            pct_bonificacion = 0
+            
         # Convert numeric columns
         df_final["Cantidad"] = pd.to_numeric(df_final["Cantidad"], errors="coerce")
         df_final["Precio_Unit"] = pd.to_numeric(df_final["Precio Unit"], errors="coerce")
@@ -56,7 +69,7 @@ def process_pdf(pdf_path):
         # Calculate prices
         df_final["Precio_Lista"] = df_final["Cantidad"] * df_final["Precio_Unit"]
         df_final["Precio Lista con Descuento Prod."] = df_final["Precio_Lista"] * (1 - df_final["% Desc."] / 100)
-        df_final["Precio Neto"] = df_final["Precio Lista con Descuento Prod."]
+        df_final["Precio Neto"] = df_final["Precio Lista con Descuento Prod."] * (1 - pct_bonificacion)
         df_final["Precio Neto Unitario"] = df_final["Precio Neto"] / df_final["Cantidad"]
         df_final["Precio con Impuestos"] = df_final["Precio Neto"] * (1 + df_final["% IVA"] / 100)
         df_final["Precio"] = df_final["Precio Neto Unitario"]
