@@ -266,7 +266,7 @@ def generate_excel(df_result, resumen_df, razon_social, nro_cotizacion, fecha):
             'bold': True,
             'align': 'right',
             'valign': 'vcenter',
-            'num_format': '#,##0.00'
+            'num_format': '"$"#,##0.00" USD"'
         })
         
         # Agregar espacio después del header
@@ -464,7 +464,7 @@ def generate_pdf(df_result, resumen_df, razon_social, nro_cotizacion, fecha):
                 for i, (concepto, importe) in enumerate(resumen_df.values):
                     y = totals_y - (i * 0.25)
                     ax.text(6.5, y, f'{concepto}:', fontsize=9, weight='bold')
-                    ax.text(9.5, y, f'${importe:,.2f}', fontsize=9, ha='right', weight='bold')
+                    ax.text(9.5, y, f'${importe:,.2f} USD', fontsize=9, ha='right', weight='bold')
                 
                 # Conditions
                 cond_y = totals_y - 1.8
