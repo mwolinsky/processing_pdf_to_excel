@@ -162,7 +162,7 @@ def process_pdf(pdf_path):
 
         return df_result, resumen_df
 
-def generate_excel(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fecha):
+def generate_excel(df_result, resumen_df, razon_social, nro_cotizacion, fecha):
     # Create Excel file in our tmp directory
     excel_filename = f"temp_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     excel_path = os.path.join(app.config['UPLOAD_FOLDER'], excel_filename)
@@ -314,7 +314,7 @@ def generate_excel(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fe
             worksheet.write(total_row + idx, total_start_col + 1, importe, total_value_format)
         
         # Agregar espacio antes de las condiciones
-        conditions_row = total_row + len(resumen_df) + 3
+        conditions_row = total_row + len(resumen_df) + 2
         conditions = [
             "Condiciones comerciales:",
             "• Validez de la presente cotización: 3 días corridos.",
@@ -338,16 +338,9 @@ def generate_excel(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fe
             format_to_use = condition_title_format if idx == 0 else condition_format
             worksheet.write(conditions_row + idx, 0, condition, format_to_use)
         
-        # Footer (sin bordes)
-        footer_row = conditions_row + len(conditions) + 2
-        footer_format = workbook.add_format({
-            'align': 'center',
-            'valign': 'vcenter',
-            'italic': True
-        })
-        worksheet.write(footer_row, 0, 'www.acquatrade.com', footer_format)
-        
-        # Adjust column widths para que no haya celdas cortadas
+        # Footer (centrado arriba de las condiciones)
+        # El footer debe ir ARRIBA de las condiciones, ocupando todas las columnas de la tabla
+        # Para asegurarnos de que está arriba de todo, lo ponemos antes del bloque de condiciones, con 2 filas de espacio antes
         for idx, col in enumerate(df_result.columns):
             # Calcular el ancho máximo necesario
             header_width = len(str(col))
@@ -371,7 +364,7 @@ def generate_excel(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fe
     
     return excel_path, excel_filename
 
-def generate_pdf(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fecha):
+def generate_pdf(df_result, resumen_df, razon_social, nro_cotizacion, fecha):
     # Create PDF file in our tmp directory
     pdf_filename = f"temp_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], pdf_filename)
@@ -380,7 +373,7 @@ def generate_pdf(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fech
     plt.ioff()
     
     # Calculate how many rows we can fit per page
-    rows_per_page = 25  # Ajustado para más filas por página
+    rows_per_page = 30  # Aumentado para más items por página0
     total_rows = len(df_result)
     total_pages = -(-total_rows // rows_per_page)  # Ceiling division
     
@@ -388,44 +381,43 @@ def generate_pdf(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fech
     with PdfPages(pdf_path) as pdf:
         # Headers and column setup (constants)
         headers = ['Descripción Artículo', 'Desc. Adicional', 'Cantidad', 'Precio', '% IVA', 'Precio Neto']
-        col_widths = [2.5, 1.5, 1, 1, 0.8, 1.2]
-        col_starts = [0.5, 3, 4.5, 5.5, 6.5, 7.3]
-        header_height = 0.35
+        col_widths = [3.0, 2.0, 1.0, 1.0, 0.8, 1.2]
+        col_starts = [0.5, 3.5, 5.5, 6.5, 7.5, 8.3]
+        header_height = 0.3
         row_height = 0.25  # Reduced for more compact rows
         
         for page in range(total_pages):
-            fig = plt.figure(figsize=(11.7, 8.3))  # A4 landscape
+            fig = plt.figure(figsize=(8.3, 11.7))  # A4 portrait
             ax = fig.add_subplot(111)
             ax.set_xlim(0, 10)
-            ax.set_ylim(0, 8)
+            ax.set_ylim(0, 12)
             ax.axis('off')
             
             # Header background
-            header_rect = patches.Rectangle((0, 7.2), 10, 0.8, linewidth=0, 
+            header_rect = patches.Rectangle((0, 11.2), 10, 0.8, linewidth=0, 
                                           facecolor='#14324B', alpha=1)
             ax.add_patch(header_rect)
             
             # Company name and subtitle
-            ax.text(5, 7.75, 'Acquatrade Sudamericana S.A', 
+            ax.text(5, 11.75, 'Acquatrade Sudamericana S.A', 
                     horizontalalignment='center', verticalalignment='center',
                     fontsize=18, color='white', weight='bold')
-            ax.text(5, 7.4, 'Cotización', 
+            ax.text(5, 11.4, 'Cotización', 
                    horizontalalignment='center', verticalalignment='center',
                    fontsize=14, color='white', weight='normal')
             
             # Client information
-            ax.text(0.5, 6.8, f'Razón social: {razon_social}', fontsize=10, weight='bold')
-            ax.text(0.5, 6.6, f'CUIT: {cuit}', fontsize=10, weight='bold')
-            ax.text(6.5, 6.8, f'N° de cotiz: {nro_cotizacion}', fontsize=10, weight='bold')
-            ax.text(6.5, 6.6, f'Fecha: {fecha}', fontsize=10, weight='bold')
+            ax.text(0.5, 10.8, f'Razón social: {razon_social}', fontsize=10)
+            ax.text(0.5, 10.6, f'N° de cotiz: {nro_cotizacion}', fontsize=10)
+            ax.text(7.5, 10.8, f'Fecha: {fecha}', fontsize=10)
             
             # Page number
             if total_pages > 1:
-                ax.text(9.5, 7.75, f'Página {page + 1}/{total_pages}', 
-                       horizontalalignment='right', fontsize=10)
+                ax.text(6.5, 10.75, f'Página {page + 1}/{total_pages}', 
+                       horizontalalignment='right', fontsize=10, color='white')
             
             # Table setup
-            table_y = 6.2
+            table_y = 9.2
             
             # Draw table headers
             for i, (header, start, width) in enumerate(zip(headers, col_starts, col_widths)):
@@ -451,27 +443,27 @@ def generate_pdf(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fech
                     
                     # Cell text
                     text_value = str(value) if pd.notna(value) else ""
-                    if len(text_value) > int(width * 10):
-                        text_value = text_value[:int(width * 10)-3] + "..."
+                    if len(text_value) > int(width * 12):  # Aumentado para más caracteres
+                        text_value = text_value[:int(width * 12)-3] + "..."
                     
-                    # Align numbers right, text center
+                    # Align numbers right, text left for descriptions
                     if col_idx >= 2:  # Numeric columns
                         ax.text(start + width - 0.05, y_pos + row_height/2, text_value, 
-                               ha='right', va='center', fontsize=7)
-                    else:
-                        ax.text(start + width/2, y_pos + row_height/2, text_value, 
-                               ha='center', va='center', fontsize=7)
+                               ha='right', va='center', fontsize=6.5)
+                    else:  # Description columns
+                        ax.text(start + 0.1, y_pos + row_height/2, text_value, 
+                               ha='left', va='center', fontsize=6.5)
             
             # Only show totals and conditions on the last page
             if page == total_pages - 1:
                 # Totals section
                 totals_y = table_y - header_height - (end_row - start_row) * row_height - 0.8
                 
-                ax.text(7.5, totals_y + 0.5, 'TOTALES', fontsize=12, weight='bold')
+                ax.text(7.0, totals_y + 0.5, 'TOTALES', fontsize=12, weight='bold')
                 
                 for i, (concepto, importe) in enumerate(resumen_df.values):
                     y = totals_y - (i * 0.25)
-                    ax.text(7.0, y, f'{concepto}:', fontsize=9, weight='bold')
+                    ax.text(6.5, y, f'{concepto}:', fontsize=9, weight='bold')
                     ax.text(9.5, y, f'${importe:,.2f}', fontsize=9, ha='right', weight='bold')
                 
                 # Conditions
@@ -487,9 +479,6 @@ def generate_pdf(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fech
                 for i, condition in enumerate(conditions):
                     weight = 'bold' if i == 0 else 'normal'
                     ax.text(0.5, cond_y - (i * 0.18), condition, fontsize=9, weight=weight)
-                
-                # Footer
-                ax.text(5, 0.3, 'www.acquatrade.com', ha='center', fontsize=9, style='italic')
             
             # Save page
             pdf.savefig(fig, bbox_inches='tight', dpi=300, facecolor='white', edgecolor='none')
@@ -531,42 +520,26 @@ def upload_file():
         # Process PDF
         df_result, resumen_df = process_pdf(filepath)
         
-        # Generate Excel and PDF
-        excel_path, excel_filename = generate_excel(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fecha)
-        pdf_path, pdf_filename = generate_pdf(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fecha)
+        # Generate PDF only
+        pdf_path, pdf_filename = generate_pdf(df_result, resumen_df, razon_social, nro_cotizacion, fecha)
         
         # Clean up original PDF file
         os.unlink(filepath)
         
-        # Rename files to match original PDF name
+        # Rename file to match original PDF name
         base_filename = os.path.splitext(filename)[0]
-        final_excel_filename = base_filename + '.xlsx'
         final_pdf_filename = base_filename + '.pdf'
-        final_excel_path = os.path.join(app.config['UPLOAD_FOLDER'], final_excel_filename)
         final_pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], final_pdf_filename)
         
-        # Move the generated files to final names
-        shutil.move(excel_path, final_excel_path)
+        # Move the generated file to final name
         shutil.move(pdf_path, final_pdf_path)
         
-        # Create ZIP file with both Excel and PDF
-        zip_filename = base_filename + '_files.zip'
-        zip_path = os.path.join(app.config['UPLOAD_FOLDER'], zip_filename)
-        
-        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            zip_file.write(final_excel_path, final_excel_filename)
-            zip_file.write(final_pdf_path, final_pdf_filename)
-        
-        # Clean up individual files (keep only ZIP)
-        os.unlink(final_excel_path)
-        os.unlink(final_pdf_path)
-        
-        # Send ZIP file containing both Excel and PDF
+        # Send PDF file
         return send_file(
-            zip_path,
+            final_pdf_path,
             as_attachment=True,
-            download_name=zip_filename,
-            mimetype='application/zip'
+            download_name=final_pdf_filename,
+            mimetype='application/pdf'
         )
     
     except Exception as e:
