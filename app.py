@@ -175,97 +175,31 @@ def generate_excel(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fe
             worksheet.write(0, col, '', header_bg_format)
             worksheet.write(1, col, '', header_bg_format)
         
-        # Intentar insertar logo con mejor posicionamiento
-        try:
-            # Buscar el logo en diferentes ubicaciones posibles (priorizando logo_2)
-            # Usar rutas absolutas para mayor compatibilidad en producción
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            logo_names = [
-                'logo_2jpeg.jpeg', 'logo_2.jpeg', 'logo_2.jpg', 'logo_2.png',
-                'logo.png', 'logo.jpeg', 'logo.jpg'
-            ]
-            
-            logo_paths = []
-            # Agregar rutas relativas y absolutas
-            for name in logo_names:
-                logo_paths.extend([
-                    name,  # Ruta relativa
-                    os.path.join(base_dir, name),  # Ruta absoluta
-                    os.path.join(base_dir, 'static', name)  # Ruta en static/
-                ])
-            
-            logo_inserted = False
-            for logo_path in logo_paths:
-                if os.path.exists(logo_path):
-                    # Calcular dimensiones y escala del logo manteniendo proporción
-                    from PIL import Image
-                    with Image.open(logo_path) as img:
-                        width, height = img.size
-                        # Ajustar tamaño considerando que ahora comparte espacio con texto más grande
-                        max_height = 40  # Tamaño aumentado para que no se vea aplastado
-                        max_width = 150  # Ancho aumentado para mejor proporción
-                        
-                        # Calcular escalas manteniendo proporción
-                        scale_by_height = max_height / height
-                        scale_by_width = max_width / width
-                        scale = min(scale_by_height, scale_by_width)  # Usar la menor para que quepa
-                    
-                    # Agregar texto "Acquatrade Sudamericana" arriba del logo
-                    company_name_format = workbook.add_format({
-                        'bold': True,
-                        'font_size': 24,  # Aumentado para mayor prominencia
-                        'font_name': 'Trebuchet MS',  # Tipografía elegante
-                        'align': 'center',
-                        'valign': 'vcenter',
-                        'font_color': 'white',
-                        'bg_color': '#14324B'
-                    })
-                    
-                    # Insertar texto centrado en toda la primera fila
-                    worksheet.merge_range('A1:L1', 'ACQUATRADE SUDAMERICANA', company_name_format)
-                    
-                    # Insertar el logo perfectamente centrado debajo del texto (en la segunda fila)
-                    worksheet.insert_image('G2', logo_path, {
-                        'x_scale': scale,
-                        'y_scale': scale,
-                        'x_offset': -10,     # Ajuste fino para centrado perfecto
-                        'y_offset': 10,     # Centrado vertical en fila de 45px (más espacio)
-                        'positioning': 1    # Mover con celdas
-                    })
-                    logo_inserted = True
-                    print(f"Logo insertado desde: {logo_path}")
-                    break
-            
-            if not logo_inserted:
-                raise FileNotFoundError("No se encontró el archivo del logo")
-                
-        except Exception as e:
-            print(f"Error insertando logo: {e}")
-            # Si no se puede insertar el logo, crear un header con texto de la empresa
-            company_name_format = workbook.add_format({
-                'bold': True,
-                'font_size': 24,  # Mismo tamaño que el texto principal
-                'font_name': 'Trebuchet MS',
-                'align': 'center',
-                'valign': 'vcenter',
-                'font_color': 'white',
-                'bg_color': '#14324B'
-            })
-            
-            fallback_logo_format = workbook.add_format({
-                'bold': True,
-                'font_size': 12,
-                'font_name': 'Trebuchet MS',
-                'align': 'center',
-                'valign': 'vcenter',
-                'font_color': 'white',
-                'bg_color': '#14324B',
-                'italic': True
-            })
-            
-            # Texto de empresa y mensaje de logo no disponible
-            worksheet.merge_range('A1:L1', 'ACQUATRADE SUDAMERICANA', company_name_format)
-            worksheet.merge_range('A2:L2', 'Logo no disponible', fallback_logo_format)
+        # Crear header con el nombre de la empresa y cotización
+        # Formato para el nombre de la empresa
+        company_name_format = workbook.add_format({
+            'bold': True,
+            'font_size': 28,  # Tamaño más grande para el nombre
+            'font_name': 'Montserrat',  # Tipografía más moderna
+            'align': 'center',
+            'valign': 'vcenter',
+            'font_color': 'white',
+            'bg_color': '#14324B'
+        })
+        
+        # Formato para "Cotización"
+        subtitle_format = workbook.add_format({
+            'font_size': 16,  # Tamaño más pequeño para el subtítulo
+            'font_name': 'Montserrat',
+            'align': 'center',
+            'valign': 'vcenter',
+            'font_color': 'white',
+            'bg_color': '#14324B'
+        })
+        
+        # Insertar textos
+        worksheet.merge_range('A1:L1', 'Acquatrade Sudamericana S.A', company_name_format)
+        worksheet.merge_range('A2:L2', 'Cotización', subtitle_format)
         
         # Configurar anchos de columna uniformes después del logo
         worksheet.set_column('A:L', 15)    # Todas las columnas con el mismo ancho
@@ -445,68 +379,14 @@ def generate_pdf(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fech
         ax.add_patch(header_rect)
         
         # Company name centered
-        ax.text(5, 7.75, 'ACQUATRADE SUDAMERICANA', 
+        ax.text(5, 7.75, 'Acquatrade Sudamericana S.A', 
                 horizontalalignment='center', verticalalignment='center',
                 fontsize=18, color='white', weight='bold')
         
-        # Try to load actual logo using the same paths as Excel
-        logo_added = False
-        try:
-            # Usar la misma lógica de búsqueda que el Excel (optimizada para producción)
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            logo_names = [
-                'logo_2jpeg.jpeg', 'logo_2.jpeg', 'logo_2.jpg', 'logo_2.png',
-                'logo.png', 'logo.jpeg', 'logo.jpg'
-            ]
-            
-            logo_paths = []
-            # Agregar rutas relativas y absolutas
-            for name in logo_names:
-                logo_paths.extend([
-                    name,  # Ruta relativa
-                    os.path.join(base_dir, name),  # Ruta absoluta
-                    os.path.join(base_dir, 'static', name)  # Ruta en static/
-                ])
-            
-            for logo_path in logo_paths:
-                if os.path.exists(logo_path):
-                    from matplotlib import image as mpimg
-                    print(f"Intentando cargar logo desde: {logo_path}")
-                    
-                    # Leer la imagen
-                    img = mpimg.imread(logo_path)
-                    
-                    # Usar dimensiones más proporcionales para el logo
-                    # Ajustado para que no se vea ancho y petiso
-                    logo_width = 0.6   # Ancho reducido
-                    logo_height = 0.45  # Alto aumentado para mejor proporción
-                    
-                    # Posicionar el logo centrado en el header
-                    center_x = 5
-                    center_y = 7.4
-                    
-                    # Definir el área donde colocar el logo
-                    left = center_x - logo_width/2
-                    right = center_x + logo_width/2
-                    bottom = center_y - logo_height/2
-                    top = center_y + logo_height/2
-                    
-                    ax.imshow(img, extent=[left, right, bottom, top], 
-                             aspect='auto', zorder=10)  # zorder alto para que aparezca encima
-                    logo_added = True
-                    print(f"Logo cargado exitosamente desde: {logo_path}")
-                    break
-        except Exception as e:
-            print(f"Error loading logo: {e}")
-            import traceback
-            traceback.print_exc()
-        
-        if not logo_added:
-            # Clean text-only logo
-            ax.text(5, 7.35, '[LOGO]', 
-                   horizontalalignment='center', verticalalignment='center',
-                   fontsize=12, color='white', weight='bold',
-                   bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.9, edgecolor='none'))
+        # Agregar el subtítulo "Cotización"
+        ax.text(5, 7.4, 'Cotización', 
+               horizontalalignment='center', verticalalignment='center',
+               fontsize=14, color='white', weight='normal')
         
         # Client information - cleaner spacing
         ax.text(0.5, 6.8, f'Razón social: {razon_social}', fontsize=10, weight='bold')
