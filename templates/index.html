@@ -135,16 +135,14 @@
                         <label for="razon_social">Razón Social del Cliente:</label>
                         <input type="text" id="razon_social" name="razon_social" required>
                     </div>
-                    <div class="form-group">
-                        <label for="cuit">CUIT del Cliente:</label>
-                        <input type="text" id="cuit" name="cuit" pattern="[0-9]{2}-[0-9]{8}-[0-9]{1}" placeholder="XX-XXXXXXXX-X" required>
-                    </div>
                 </div>
                 <div class="form-col">
                     <div class="form-group">
                         <label for="nro_cotizacion">Número de Cotización:</label>
                         <input type="text" id="nro_cotizacion" name="nro_cotizacion" required>
                     </div>
+                </div>
+                <div class="form-col">
                     <div class="form-group">
                         <label for="fecha">Fecha:</label>
                         <input type="date" id="fecha" name="fecha" required>
@@ -206,17 +204,6 @@
             return true;
         }
 
-        // Validación de CUIT en tiempo real
-        document.getElementById('cuit').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length >= 2) {
-                value = value.substring(0, 2) + '-' + value.substring(2);
-            }
-            if (value.length >= 11) {
-                value = value.substring(0, 11) + '-' + value.substring(11);
-            }
-            e.target.value = value;
-        });
     </script>
 </body>
 </html>
