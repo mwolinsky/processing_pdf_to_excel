@@ -44,12 +44,26 @@ def process_pdf(pdf_path):
     import pandas as pd
 
     with pdfplumber.open(pdf_path) as pdf:
-        # Extract table from first page with data
+        # Extract all tables from all pages
+        all_tables = []
         for page in pdf.pages:
             tables = page.extract_tables()
             if tables:
-                raw_table = tables[0]
-                break
+                all_tables.extend(tables)
+        
+        if not all_tables:
+            raise ValueError("No se encontraron tablas en el PDF")
+            
+        # Combine all tables
+        raw_table = []
+        headers = all_tables[0][0]  # Get headers from first table
+        raw_table.append(headers)
+        
+        # Add data rows from all tables
+        for table in all_tables:
+            # Skip header row if it's not the first table
+            start_idx = 1 if table[0] == headers else 0
+            raw_table.extend(table[start_idx:])
 
         # Convert to DataFrame
         df_raw = pd.DataFrame(raw_table)
@@ -365,117 +379,121 @@ def generate_pdf(df_result, resumen_df, razon_social, cuit, nro_cotizacion, fech
     # Set up matplotlib to not display plots
     plt.ioff()
     
-    # Create PDF with matplotlib - simpler approach
+    # Calculate how many rows we can fit per page
+    rows_per_page = 25  # Ajustado para más filas por página
+    total_rows = len(df_result)
+    total_pages = -(-total_rows // rows_per_page)  # Ceiling division
+    
+    # Create PDF with matplotlib - multiple pages approach
     with PdfPages(pdf_path) as pdf:
-        fig = plt.figure(figsize=(11.7, 8.3))  # A4 landscape
-        ax = fig.add_subplot(111)
-        ax.set_xlim(0, 10)
-        ax.set_ylim(0, 8)
-        ax.axis('off')
-        
-        # Header background - single rectangle
-        header_rect = patches.Rectangle((0, 7.2), 10, 0.8, linewidth=0, 
-                                      facecolor='#14324B', alpha=1)
-        ax.add_patch(header_rect)
-        
-        # Company name centered
-        ax.text(5, 7.75, 'Acquatrade Sudamericana S.A', 
-                horizontalalignment='center', verticalalignment='center',
-                fontsize=18, color='white', weight='bold')
-        
-        # Agregar el subtítulo "Cotización"
-        ax.text(5, 7.4, 'Cotización', 
-               horizontalalignment='center', verticalalignment='center',
-               fontsize=14, color='white', weight='normal')
-        
-        # Client information - cleaner spacing
-        ax.text(0.5, 6.8, f'Razón social: {razon_social}', fontsize=10, weight='bold')
-        ax.text(0.5, 6.6, f'CUIT: {cuit}', fontsize=10, weight='bold')
-        
-        ax.text(6.5, 6.8, f'N° de cotiz: {nro_cotizacion}', fontsize=10, weight='bold')
-        ax.text(6.5, 6.6, f'Fecha: {fecha}', fontsize=10, weight='bold')
-        
-        # Table - simplified approach
-        table_y = 6.2
+        # Headers and column setup (constants)
         headers = ['Descripción Artículo', 'Desc. Adicional', 'Cantidad', 'Precio', '% IVA', 'Precio Neto']
-        
-        # Simple column setup
         col_widths = [2.5, 1.5, 1, 1, 0.8, 1.2]
         col_starts = [0.5, 3, 4.5, 5.5, 6.5, 7.3]
-        
-        # Table header
         header_height = 0.35
-        for i, (header, start, width) in enumerate(zip(headers, col_starts, col_widths)):
+        row_height = 0.25  # Reduced for more compact rows
+        
+        for page in range(total_pages):
+            fig = plt.figure(figsize=(11.7, 8.3))  # A4 landscape
+            ax = fig.add_subplot(111)
+            ax.set_xlim(0, 10)
+            ax.set_ylim(0, 8)
+            ax.axis('off')
+            
             # Header background
-            rect = patches.Rectangle((start, table_y), width, header_height, 
-                                   facecolor='#14324B', edgecolor='black', linewidth=1)
-            ax.add_patch(rect)
+            header_rect = patches.Rectangle((0, 7.2), 10, 0.8, linewidth=0, 
+                                          facecolor='#14324B', alpha=1)
+            ax.add_patch(header_rect)
             
-            # Header text
-            ax.text(start + width/2, table_y + header_height/2, header, 
-                   ha='center', va='center', fontsize=8, color='white', weight='bold')
-        
-        # Table data
-        row_height = 0.3
-        max_rows = min(len(df_result), 14)  # More rows
-        
-        for row_idx, row_data in enumerate(df_result.values[:max_rows]):
-            y_pos = table_y - header_height - (row_idx * row_height)
+            # Company name and subtitle
+            ax.text(5, 7.75, 'Acquatrade Sudamericana S.A', 
+                    horizontalalignment='center', verticalalignment='center',
+                    fontsize=18, color='white', weight='bold')
+            ax.text(5, 7.4, 'Cotización', 
+                   horizontalalignment='center', verticalalignment='center',
+                   fontsize=14, color='white', weight='normal')
             
-            # No alternate row colors - clean white background for all rows
+            # Client information
+            ax.text(0.5, 6.8, f'Razón social: {razon_social}', fontsize=10, weight='bold')
+            ax.text(0.5, 6.6, f'CUIT: {cuit}', fontsize=10, weight='bold')
+            ax.text(6.5, 6.8, f'N° de cotiz: {nro_cotizacion}', fontsize=10, weight='bold')
+            ax.text(6.5, 6.6, f'Fecha: {fecha}', fontsize=10, weight='bold')
             
-            # Cell data
-            for col_idx, (value, start, width) in enumerate(zip(row_data, col_starts, col_widths)):
-                # Cell border - lighter and cleaner
-                border = patches.Rectangle((start, y_pos), width, row_height, 
-                                         facecolor='white', edgecolor='lightgray', linewidth=0.3)
-                ax.add_patch(border)
+            # Page number
+            if total_pages > 1:
+                ax.text(9.5, 7.75, f'Página {page + 1}/{total_pages}', 
+                       horizontalalignment='right', fontsize=10)
+            
+            # Table setup
+            table_y = 6.2
+            
+            # Draw table headers
+            for i, (header, start, width) in enumerate(zip(headers, col_starts, col_widths)):
+                rect = patches.Rectangle((start, table_y), width, header_height, 
+                                       facecolor='#14324B', edgecolor='black', linewidth=1)
+                ax.add_patch(rect)
+                ax.text(start + width/2, table_y + header_height/2, header, 
+                       ha='center', va='center', fontsize=8, color='white', weight='bold')
+            
+            # Calculate row range for this page
+            start_row = page * rows_per_page
+            end_row = min((page + 1) * rows_per_page, total_rows)
+            
+            # Draw table data
+            for idx, row_data in enumerate(df_result.values[start_row:end_row]):
+                y_pos = table_y - header_height - (idx * row_height)
                 
-                # Cell text
-                text_value = str(value) if pd.notna(value) else ""
+                for col_idx, (value, start, width) in enumerate(zip(row_data, col_starts, col_widths)):
+                    # Cell border
+                    border = patches.Rectangle((start, y_pos), width, row_height, 
+                                             facecolor='white', edgecolor='lightgray', linewidth=0.3)
+                    ax.add_patch(border)
+                    
+                    # Cell text
+                    text_value = str(value) if pd.notna(value) else ""
+                    if len(text_value) > int(width * 10):
+                        text_value = text_value[:int(width * 10)-3] + "..."
+                    
+                    # Align numbers right, text center
+                    if col_idx >= 2:  # Numeric columns
+                        ax.text(start + width - 0.05, y_pos + row_height/2, text_value, 
+                               ha='right', va='center', fontsize=7)
+                    else:
+                        ax.text(start + width/2, y_pos + row_height/2, text_value, 
+                               ha='center', va='center', fontsize=7)
+            
+            # Only show totals and conditions on the last page
+            if page == total_pages - 1:
+                # Totals section
+                totals_y = table_y - header_height - (end_row - start_row) * row_height - 0.8
                 
-                # Truncate if too long
-                if len(text_value) > int(width * 10):
-                    text_value = text_value[:int(width * 10)-3] + "..."
+                ax.text(7.5, totals_y + 0.5, 'TOTALES', fontsize=12, weight='bold')
                 
-                # Align numbers right, text center
-                if col_idx >= 2:  # Numeric columns
-                    ax.text(start + width - 0.05, y_pos + row_height/2, text_value, 
-                           ha='right', va='center', fontsize=7)
-                else:
-                    ax.text(start + width/2, y_pos + row_height/2, text_value, 
-                           ha='center', va='center', fontsize=7)
-        
-        # Totals section - more space from table
-        totals_y = table_y - header_height - (max_rows * row_height) - 0.8
-        
-        ax.text(7.5, totals_y + 0.5, 'TOTALES', fontsize=12, weight='bold')
-        
-        for i, (concepto, importe) in enumerate(resumen_df.values):
-            y = totals_y - (i * 0.25)
-            ax.text(7.0, y, f'{concepto}:', fontsize=9, weight='bold')
-            ax.text(9.5, y, f'${importe:,.2f}', fontsize=9, ha='right', weight='bold')
-        
-        # Conditions - adjusted spacing
-        cond_y = totals_y - 1.8
-        conditions = [
-            "Condiciones comerciales:",
-            "• Validez de la presente cotización: 3 días corridos.",
-            "• Precios expresados en dólares.",
-            "• Forma de pago: a convenir.",
-            "• Entrega: sujeta a disponibilidad de stock."
-        ]
-        
-        for i, condition in enumerate(conditions):
-            weight = 'bold' if i == 0 else 'normal'
-            ax.text(0.5, cond_y - (i * 0.18), condition, fontsize=9, weight=weight)
-        
-        # Footer
-        ax.text(5, 0.3, 'www.acquatrade.com', ha='center', fontsize=9, style='italic')
-        
-        # Save with white background
-        pdf.savefig(fig, bbox_inches='tight', dpi=300, facecolor='white', edgecolor='none')
-        plt.close(fig)
+                for i, (concepto, importe) in enumerate(resumen_df.values):
+                    y = totals_y - (i * 0.25)
+                    ax.text(7.0, y, f'{concepto}:', fontsize=9, weight='bold')
+                    ax.text(9.5, y, f'${importe:,.2f}', fontsize=9, ha='right', weight='bold')
+                
+                # Conditions
+                cond_y = totals_y - 1.8
+                conditions = [
+                    "Condiciones comerciales:",
+                    "• Validez de la presente cotización: 3 días corridos.",
+                    "• Precios expresados en dólares.",
+                    "• Forma de pago: a convenir.",
+                    "• Entrega: sujeta a disponibilidad de stock."
+                ]
+                
+                for i, condition in enumerate(conditions):
+                    weight = 'bold' if i == 0 else 'normal'
+                    ax.text(0.5, cond_y - (i * 0.18), condition, fontsize=9, weight=weight)
+                
+                # Footer
+                ax.text(5, 0.3, 'www.acquatrade.com', ha='center', fontsize=9, style='italic')
+            
+            # Save page
+            pdf.savefig(fig, bbox_inches='tight', dpi=300, facecolor='white', edgecolor='none')
+            plt.close(fig)
     
     return pdf_path, pdf_filename
 
